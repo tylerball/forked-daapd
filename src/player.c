@@ -173,6 +173,7 @@ static int player_flush_pending;
 
 // Config values
 static int speaker_autoselect;
+static int speaker_autoselect_playback;
 static int clear_queue_on_stop_disabled;
 
 // Player status
@@ -245,6 +246,9 @@ playback_abort(void);
 
 static void
 playback_suspend(void);
+
+static int
+speaker_activate(struct output_device *device);
 
 
 /* ----------------------------- Volume helpers ----------------------------- */
@@ -1243,10 +1247,15 @@ device_add(void *arg, int *retval)
       free(device->name);
       device->name = keep_name;
 
-      if (device->selected && (player_state != PLAY_PLAYING))
-	speaker_select_output(device);
-      else
-	device->selected = 0;
+      if (device->selected)
+	{
+	  if (player_state != PLAY_PLAYING)
+	    speaker_select_output(device);
+	  else if (speaker_autoselect_playback)
+	    speaker_activate(device);
+	  else
+	    device->selected = 0;
+	}
 
       device->next = dev_list;
       dev_list = device;
@@ -3285,6 +3294,7 @@ player_init(void)
   player_exit = 0;
 
   speaker_autoselect = cfg_getbool(cfg_getsec(cfg, "general"), "speaker_autoselect");
+  speaker_autoselect_playback = cfg_getbool(cfg_getsec(cfg, "general"), "speaker_autoselect_playback");
   clear_queue_on_stop_disabled = cfg_getbool(cfg_getsec(cfg, "mpd"), "clear_queue_on_stop_disable");
 
   dev_list = NULL;
